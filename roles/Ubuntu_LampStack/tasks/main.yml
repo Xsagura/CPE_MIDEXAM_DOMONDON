@@ -1,0 +1,21 @@
+- name: Install Apache2, Mariadb and PHP
+  apt:
+    name:
+      - apache2
+      - mariadb-server
+      - apache2-php
+      - php-cli
+      - php-gd
+    state: latest
+
+- name: Enable and Restart Apache2 Service
+  service:
+    name: apache2
+    state: restarted
+    enabled: true
+
+- name: Enable and Restart MariaDB Service
+  service:
+    name: mariadb
+    state: restarted
+    enabled: true

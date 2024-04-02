@@ -1,0 +1,211 @@
+#Elasticsearch
+- name: Add Elasticsearch apt key
+  apt_key:
+   url: "https://packages.elastic.co/GPG-KEY-elasticsearch"
+   state: present
+
+- name: Install APT repository
+  apt:
+    name: apt-transport-https
+    state: present
+
+- name: Adding Elasticsearch repo
+  apt_repository:
+   repo: deb https://artifacts.elastic.co/packages/7.x/apt stable main 
+   state: present
+
+- name: Install Elasticsearch
+  apt:
+   name: elasticsearch
+   update_cache: yes
+
+- name: Updating the config file to allow outside access
+  lineinfile:
+   destfile: /etc/elasticsearch/elasticsearch.yml
+   regexp: 'network.host:'
+   line: 'network.host: 0.0.0.0'
+
+- name: Updating the port in config file 
+  lineinfile:
+   destfile: /etc/elasticsearch/elasticsearch.yml
+   regexp: 'http.port:'
+   line: 'http.port: 9200'
+
+- name: Updating the config file to allow outside access
+  lineinfile:
+   destfile: /etc/elasticsearch/elasticsearch.yml
+   regexp: 'cluster.initial_master_nodes:'
+   line: 'cluster.initial_master_nodes: ["{{ ansible_default_ipv4.address }}"]'
+
+- name: Starting Elasticsearch
+  service:
+   name: elasticsearch
+   state: started
+
+#Kibana
+- name: Install Kibana with apt
+  apt:
+   name: kibana
+   update_cache: yes
+
+- name: Updating the config file to allow outside access
+  lineinfile:
+   destfile: /etc/kibana/kibana.yml
+   regexp: 'server.host:'
+   line: 'server.host: 0.0.0.0'
+
+- name: Defining server port
+  lineinfile:
+   destfile: /etc/kibana/kibana.yml
+   regexp: 'server.port:'
+   line: 'server.port: 5601'
+
+- name: Defining Elasticsearch URL
+  lineinfile:
+   destfile: /etc/kibana/kibana.yml
+   regexp: 'elasticsearch.hosts:'
+   line: 'elasticsearch.hosts: "http://localhost:9200"'
+
+- name: Starting Kibana
+  service:
+   name: kibana
+   state: started
+
+#Logstash
+- name: Install logstash with apt
+  apt:
+   name: logstash
+   update_cache: yes
+
+- name: Starting logstash
+  service:
+   name: logstash
+   state: started
+
+#Metricbeat
+- name: Install Metricbeat with apt
+  apt:
+   name: metricbeat
+   update_cache: yes
+
+- name: Starting Metricbeat
+  service:
+   name: metricbeat
+   state: started
+
+#Restart Services
+
+- name: Restart Elasticsearch
+  service:
+    name: elasticsearch
+    state: restarted
+
+- name: Restart Logstash
+  service:
+    name: logstash
+    state: restarted
+
+- name: Restart Kibana
+  service:
+    name: kibana
+    state: restarted
+
+- name: Restart Metricbeat
+  service:
+    name: metricbeat
+    state: restarted
+
+#Nagios
+- name: Installing Nagios Required Packages
+  tags: Ubuntu_packs
+  apt:
+    name:
+      - wget
+      - unzip
+      - curl
+      - openssl
+      - build-essential
+      - libgd-dev
+      - libssl-dev
+      - libapache2-mod-php8.1
+      - php-gd
+      - php
+      - apache2
+      - dc
+      - make
+      - snmp
+      - libnet-snmp-perl
+      - autoconf 
+      - gettext
+      - python3
+      - python3-pip
+    state: latest
+
+- name: Downloading Nagios Core
+  unarchive:
+    src: https://github.com/NagiosEnterprises/nagioscore/archive/nagios-4.4.6.tar.gz
+    dest: /tmp
+    remote_src: yes
+    mode: 0777
+    owner: root
+    group: root
+
+- name: Installing Nagios Core
+  shell: 
+    cd /tmp/nagioscore-**
+    ./configure
+    sudo make all
+    sudo make install-groups-users
+    sudo usermod -a -G www-data
+    sudo make install
+    sudo make install-init
+    sudo make install-commandmode
+    sudo make install-config
+    sudo make install-webconf
+    sudo a2enmod rewrite
+    sudo a2enmod cgi
+
+- name: Downloading Nagios-Plugins
+  unarchive:
+    src: https://github.com/nagios-plugins/nagios-plugins/archive/release-2.3.3.tar.gz
+    dest: /tmp
+    remote_src: yes
+    mode: 0777
+    owner: root
+    group: root
+
+- name: Installing Nagios-Plugins
+  shell: 
+    cd /tmp/nagios-plugins*
+    sudo ./tools/setup
+    sudo ./configure --with-nagios-user=nagios --with-nagios-group=nagios --with-openssl
+    sudo make
+    sudo make install
+
+- name: Installing Passlib
+  pip:
+    name: passlib
+
+- name: Create User
+  community.general.htpasswd:
+    path: /usr/local/nagios/etc/htpasswd.users
+    name: admin
+    password: admin
+
+- name: Restart Nagios Service
+  service:
+    name: nagios
+    state: restarted
+    enabled: true
+
+- name: Restart Apache2 Service
+  service:
+    name: apache2
+    state: restarted
+    enabled: true
+
+- name: Restart MariaDB Service
+  service:
+    name: mariadb
+    state: restarted
+    enabled: true

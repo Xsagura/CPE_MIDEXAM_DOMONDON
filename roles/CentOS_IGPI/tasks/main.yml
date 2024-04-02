@@ -1,0 +1,43 @@
+- name: Installing Required Packages
+  tags: CentOS_packs
+  yum:
+    name:
+      - httpd
+      - snapd
+      - firewalld
+    state: latest
+
+- name: Installing Prometheus
+  tags: CentOS_prometheus
+  snap:
+    name: 
+      - prometheus
+    state: present
+
+- name: Restart Firewalld
+  service:
+    name: firewalld
+    state: restarted
+    enabled: true
+
+- name: Open port 9090
+  firewalld:
+    zone: public
+    port: 9090/tcp
+    permanent: true
+    state: enabled
+  become: yes
+
+- name: Restart HTTPD Service
+  service:
+    name: httpd
+    state: restarted
+    enabled: true
+
+- name: Start Prometheus Service
+  shell: 
+    snap start prometheus
+
+- name: Restart Prometheus Service
+  shell: 
+    snap restart prometheus
